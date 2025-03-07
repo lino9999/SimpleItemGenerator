@@ -1,0 +1,9 @@
+name: SimpleItemGenerator
+version: '1.3'
+main: com.Lino.SimpleItemGenerator.SimpleItemGenerator
+api-version: '1.21'
+authors: [Lino9999]
+commands:
+  itemgenerator:
+    description: give and reload
+    usage: /itemgenerator <give|reload>

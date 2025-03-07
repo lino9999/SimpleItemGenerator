@@ -1,0 +1,25 @@
+generators:
+  diamond:
+    display-name: "&6Diamond Generator"
+    block-type: LODESTONE
+    cooldown: 30
+    particles: true
+    items:
+      diamante:
+        material: DIAMOND
+        amount: 1
+        weight: 1
+
+  resource:
+    display-name: "&eResource Generator"
+    block-type: IRON_BLOCK
+    cooldown: 15
+    items:
+      ferro:
+        material: IRON_INGOT
+        amount: 3
+        weight: 3
+      oro:
+        material: GOLD_INGOT
+        amount: 2
+        weight: 2
