@@ -15,8 +15,8 @@ public class ItemGeneratorCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("§b/itemgenerator give <player> <name> §7- for give a gen!");
-            sender.sendMessage("§b/itemgenerator reload §7- reload config");
+            sender.sendMessage("§b/itemgenerator give <player> <name> §7- Give a generator!");
+            sender.sendMessage("§b/itemgenerator reload §7- Reload config");
             return false;
         }
 
@@ -34,13 +34,13 @@ public class ItemGeneratorCommand implements CommandExecutor {
 
                 Player target = plugin.getServer().getPlayer(args[1]);
                 if (target == null) {
-                    sender.sendMessage("§cGiocatore non trovato!");
+                    sender.sendMessage("§cPlayer not found!");
                     return false;
                 }
 
                 String generatorName = args[2];
                 if (plugin.getGeneratorConfig(generatorName) == null) {
-                    sender.sendMessage("§cGenerator no found!");
+                    sender.sendMessage("§cGenerator not found!");
                     return false;
                 }
 

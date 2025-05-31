@@ -1,9 +1,33 @@
 name: SimpleItemGenerator
-version: '1.3'
+version: '2.0'
 main: com.Lino.SimpleItemGenerator.SimpleItemGenerator
 api-version: '1.21'
 authors: [Lino9999]
+description: Advanced item generator plugin with levels and upgrades
 commands:
   itemgenerator:
-    description: give and reload
+    description: Main command for item generators
     usage: /itemgenerator <give|reload>
+    aliases: [ig, generator]
+permissions:
+  itemgenerator.give:
+    description: Allows giving generators to players
+    default: op
+  itemgenerator.reload:
+    description: Allows reloading the plugin configuration
+    default: op
+  itemgenerator.place:
+    description: Allows placing generators
+    default: true
+  itemgenerator.break.others:
+    description: Allows breaking other players' generators
+    default: op
+  itemgenerator.limit.5:
+    description: Allows placing up to 5 generators
+    default: true
+  itemgenerator.limit.10:
+    description: Allows placing up to 10 generators
+    default: op
+  itemgenerator.limit.unlimited:
+    description: Allows placing unlimited generators
+    default: op

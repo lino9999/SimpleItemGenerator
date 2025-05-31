@@ -1,25 +1,124 @@
+# SimpleItemGenerator - Configuration
+# Version: 2.0
+
+# General settings
+general:
+  # Default generator limit per player
+  default-generator-limit: 5
+
+  # Auto-save interval (in minutes)
+  auto-save-interval: 5
+
+# Protection settings
+protection:
+  # Prevent explosion damage
+  prevent-explosions: true
+
+# Generator configurations
 generators:
+  # Diamond generator
   diamond:
-    display-name: "&6Diamond Generator"
+    display-name: "&b&lDiamond Generator"
     block-type: LODESTONE
     cooldown: 30
     particles: true
+
+    # Required permission to place (empty = no permission required)
+    permission: ""
+
+    # Items that can be generated
     items:
-      diamante:
+      diamond:
         material: DIAMOND
         amount: 1
-        weight: 1
+        weight: 70
+        name: "&b✦ Pure Diamond ✦"
+        lore:
+          - "&7A high quality diamond"
+          - "&7magically generated"
 
+      diamond_block:
+        material: DIAMOND_BLOCK
+        amount: 1
+        weight: 10
+        name: "&b&lCompressed Diamond Block"
+
+      enchanted_diamond:
+        material: DIAMOND
+        amount: 1
+        weight: 20
+        name: "&d✦ Enchanted Diamond ✦"
+        enchants:
+          - "unbreaking:1"
+
+  # Resource generator
   resource:
-    display-name: "&eResource Generator"
+    display-name: "&e&lResource Generator"
     block-type: IRON_BLOCK
     cooldown: 15
+    particles: false
+    permission: ""
+
     items:
-      ferro:
+      iron:
         material: IRON_INGOT
         amount: 3
-        weight: 3
-      oro:
+        weight: 40
+
+      gold:
         material: GOLD_INGOT
         amount: 2
-        weight: 2
+        weight: 30
+
+      coal:
+        material: COAL
+        amount: 5
+        weight: 20
+
+      redstone:
+        material: REDSTONE
+        amount: 4
+        weight: 10
+
+  # Farm generator
+  farm:
+    display-name: "&a&lFarm Generator"
+    block-type: HAY_BLOCK
+    cooldown: 10
+    particles: true
+    permission: ""
+
+    items:
+      wheat:
+        material: WHEAT
+        amount: 3
+        weight: 30
+
+      carrot:
+        material: CARROT
+        amount: 2
+        weight: 25
+
+      potato:
+        material: POTATO
+        amount: 2
+        weight: 25
+
+      beetroot:
+        material: BEETROOT
+        amount: 1
+        weight: 20
+
+  # Experience generator
+  experience:
+    display-name: "&d&lExperience Generator"
+    block-type: ENCHANTING_TABLE
+    cooldown: 45
+    particles: true
+    permission: ""
+
+    items:
+      exp_bottle:
+        material: EXPERIENCE_BOTTLE
+        amount: 1
+        weight: 100
