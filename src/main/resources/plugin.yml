@@ -1,5 +1,5 @@
 name: SimpleItemGenerator
-version: '2.0'
+version: '2.1'
 main: com.Lino.SimpleItemGenerator.SimpleItemGenerator
 api-version: '1.21'
 authors: [Lino9999]

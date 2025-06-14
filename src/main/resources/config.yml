@@ -1,6 +1,3 @@
-# SimpleItemGenerator - Configuration
-# Version: 2.0
-
 # General settings
 general:
   # Default generator limit per player
@@ -8,6 +5,20 @@ general:
 
   # Auto-save interval (in minutes)
   auto-save-interval: 5
+
+  # Performance settings
+  performance:
+    # Maximum items that can exist near a generator before stopping generation
+    max-nearby-items: 50
+
+    # Radius to check for nearby items
+    item-check-radius: 5
+
+    # Percentage of generators to process per tick (1-100)
+    generators-per-tick: 20
+
+    # Update chunk cache interval (seconds)
+    chunk-cache-update: 5
 
 # Protection settings
 protection:

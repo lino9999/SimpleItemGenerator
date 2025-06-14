@@ -2,6 +2,7 @@ package com.Lino.SimpleItemGenerator;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -17,7 +18,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public class SimpleItemGenerator extends JavaPlugin {
 
@@ -26,9 +29,18 @@ public class SimpleItemGenerator extends JavaPlugin {
     private final Map<String, GeneratorConfig> generatorConfigs = new HashMap<>();
     private final Map<UUID, PlayerData> playerData = new ConcurrentHashMap<>();
 
+    // Cache per ottimizzare i check sui chunk
+    private final Set<Chunk> loadedChunksCache = ConcurrentHashMap.newKeySet();
+    private long lastChunkCacheUpdate = 0;
+
     private File dataFile;
     private YamlConfiguration dataConfig;
     private BukkitTask globalGeneratorTask;
+    private BukkitTask saveTask;
+
+    // Flag per batch saving
+    private volatile boolean needsSave = false;
+    private long lastSaveTime = System.currentTimeMillis();
 
     @Override
     public void onEnable() {
@@ -42,6 +54,7 @@ public class SimpleItemGenerator extends JavaPlugin {
             Bukkit.getScheduler().runTask(this, () -> {
                 loadGenerators();
                 startGlobalTask();
+                startAutoSaveTask();
 
                 // Register commands and events
                 getCommand("itemgenerator").setExecutor(new ItemGeneratorCommand(this));
@@ -60,6 +73,9 @@ public class SimpleItemGenerator extends JavaPlugin {
         if (globalGeneratorTask != null) {
             globalGeneratorTask.cancel();
         }
+        if (saveTask != null) {
+            saveTask.cancel();
+        }
 
         // Save everything asynchronously
         CompletableFuture.runAsync(() -> {
@@ -69,24 +85,69 @@ public class SimpleItemGenerator extends JavaPlugin {
 
         activeGenerators.clear();
         playerData.clear();
+        loadedChunksCache.clear();
     }
 
     private void startGlobalTask() {
-        // Usa un singolo task per tutti i generatori invece di uno per generatore
+        // Ottimizzazione: Processa i generatori in batch e solo quelli in chunk caricati
         globalGeneratorTask = Bukkit.getScheduler().runTaskTimer(this, () -> {
             long currentTime = System.currentTimeMillis();
 
-            activeGenerators.forEach((location, data) -> {
+            // Update chunk cache ogni 5 secondi
+            if (currentTime - lastChunkCacheUpdate > 5000) {
+                updateChunkCache();
+                lastChunkCacheUpdate = currentTime;
+            }
+
+            // Processa solo un subset di generatori per tick per distribuire il carico
+            List<Map.Entry<Location, GeneratorData>> entries = activeGenerators.entrySet().stream()
+                    .filter(entry -> isChunkLoadedCached(entry.getKey()))
+                    .collect(Collectors.toList());
+
+            int batchSize = Math.max(1, entries.size() / 5); // Processa 20% dei generatori per tick
+            int startIndex = ThreadLocalRandom.current().nextInt(Math.max(1, entries.size()));
+
+            for (int i = 0; i < batchSize && i < entries.size(); i++) {
+                Map.Entry<Location, GeneratorData> entry = entries.get((startIndex + i) % entries.size());
+                Location location = entry.getKey();
+                GeneratorData data = entry.getValue();
+
                 if (data.canGenerate(currentTime)) {
-                    generateItem(location, data);
+                    // Esegui la generazione in modo asincrono per non bloccare il main thread
+                    Bukkit.getScheduler().runTask(this, () -> generateItem(location, data));
                     data.setLastGeneration(currentTime);
                 }
-            });
-        }, 20L, 20L); // Controlla ogni secondo
+            }
+        }, 20L, 4L); // Esegui ogni 4 tick invece di 20 per processare meno generatori per volta
+    }
+
+    private void updateChunkCache() {
+        loadedChunksCache.clear();
+        activeGenerators.keySet().stream()
+                .map(loc -> loc.getChunk())
+                .filter(Chunk::isLoaded)
+                .forEach(loadedChunksCache::add);
+    }
+
+    private boolean isChunkLoadedCached(Location location) {
+        return loadedChunksCache.contains(location.getChunk());
+    }
+
+    private void startAutoSaveTask() {
+        // Save task che salva solo quando necessario
+        int saveInterval = getConfig().getInt("general.auto-save-interval", 5) * 60 * 20; // Convert to ticks
+        saveTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+            if (needsSave || System.currentTimeMillis() - lastSaveTime > 300000) { // Force save ogni 5 minuti
+                saveGenerators();
+                savePlayerData();
+                needsSave = false;
+                lastSaveTime = System.currentTimeMillis();
+            }
+        }, saveInterval, saveInterval);
     }
 
     private void generateItem(Location location, GeneratorData data) {
-        // Check if chunk is loaded
+        // Check if chunk is loaded (double check necessario)
         if (!location.getChunk().isLoaded()) return;
 
         // Check if block is still present
@@ -101,10 +162,16 @@ public class SimpleItemGenerator extends JavaPlugin {
         if (item != null) {
             // Generate the item
             Location dropLocation = location.clone().add(0.5, 1.2, 0.5);
-            location.getWorld().dropItemNaturally(dropLocation, item);
 
-            // Particle effects
-            if (config.hasParticles()) {
+            // Ottimizzazione: Drop item senza fisica naturale se ci sono troppi items
+            if (location.getWorld().getNearbyEntities(dropLocation, 5, 5, 5).size() < 50) {
+                location.getWorld().dropItemNaturally(dropLocation, item);
+            } else {
+                location.getWorld().dropItem(dropLocation, item).setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+            }
+
+            // Particle effects - Ridotti per performance
+            if (config.hasParticles() && ThreadLocalRandom.current().nextInt(3) == 0) { // Solo 33% delle volte
                 playGenerationEffect(dropLocation);
             }
 
@@ -120,12 +187,12 @@ public class SimpleItemGenerator extends JavaPlugin {
     }
 
     private void playGenerationEffect(Location location) {
-        // Simple particle effect
+        // Ottimizzazione: Ridotto numero di particelle
         location.getWorld().spawnParticle(
                 org.bukkit.Particle.HAPPY_VILLAGER,
                 location,
-                10,
-                0.5, 0.5, 0.5,
+                3, // Ridotto da 10 a 3
+                0.3, 0.3, 0.3, // Ridotto spread
                 0
         );
     }
@@ -141,15 +208,15 @@ public class SimpleItemGenerator extends JavaPlugin {
         PlayerData pData = getPlayerData(placer);
         pData.incrementGeneratorsPlaced();
 
-        // Save immediately
-        saveGeneratorsAsync();
+        // Mark for save invece di salvare immediatamente
+        needsSave = true;
     }
 
     public void removeGenerator(Location loc) {
         GeneratorData data = activeGenerators.remove(loc);
         if (data == null) return;
 
-        saveGeneratorsAsync();
+        needsSave = true;
     }
 
     private void loadConfigurations() {
@@ -238,7 +305,7 @@ public class SimpleItemGenerator extends JavaPlugin {
     }
 
     public void saveGeneratorsAsync() {
-        CompletableFuture.runAsync(this::saveGenerators);
+        needsSave = true; // Mark for batch save invece di salvare immediatamente
     }
 
     private void loadPlayerData() {
@@ -329,6 +396,10 @@ public class SimpleItemGenerator extends JavaPlugin {
                 data.setConfig(newConfig);
             }
         });
+
+        // Clear cache
+        loadedChunksCache.clear();
+        lastChunkCacheUpdate = 0;
     }
 
     // Getters
